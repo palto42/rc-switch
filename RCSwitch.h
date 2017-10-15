@@ -81,6 +81,8 @@ class RCSwitch {
     void switchOff(const char* sGroup, const char* sDevice);
     void switchOn(char sGroup, int nDevice);
     void switchOff(char sGroup, int nDevice);
+    void witchOnZap(const char* sGroup, int nChannel);
+    void witchOffZap(const char* sGroup, int nChannel);
 
     void sendTriState(const char* sCodeWord);
     void send(unsigned long code, unsigned int length);

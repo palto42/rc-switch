@@ -300,6 +300,25 @@ void RCSwitch::switchOff(const char* sGroup, const char* sDevice) {
   this->sendTriState( this->getCodeWordA(sGroup, sDevice, false) );
 }
 
+/**
+ * Switch a Zap switch on
+ *
+ * @param sGroup        Code of the switch group (refers to solder bridges 1..5 where "1" = open and "0" = soldered, if all soldered it's "00000")
+ * @param nChannelCode  Number of the switch itself (1..5)
+ */
+void RCSwitch::switchOnZap(const char* sGroup, int nChannel) {
+  this->sendTriState( this->getCodeWordZ(sGroup, nDevice, false) );
+}
+
+/**
+ * Switch a Zap switch off
+ *
+ * @param sGroup        Code of the switch group (refers to solder bridges 1..5 where "1" = open and "0" = soldered, if all soldered it's "00000")
+ * @param nChannelCode  Number of the switch itself (1..5)
+ */
+void RCSwitch::switchOffZap(const char* sGroup, int nChannel) {
+  this->sendTriState( this->getCodeWordZ(sGroup, nDevice, false) );
+}
 
 /**
  * Returns a char[13], representing the code word to be send.
