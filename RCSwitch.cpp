@@ -317,7 +317,7 @@ void RCSwitch::switchOnZap(const char* sGroup, int nChannel) {
  * @param nChannelCode  Number of the switch itself (1..5)
  */
 void RCSwitch::switchOffZap(const char* sGroup, int nChannel) {
-  this->sendTriState( this->getCodeWordZ(sGroup, nDevice, false) );
+  this->sendTriState( this->getCodeWordZ(sGroup, nChannel, false) );
 }
 
 /**
