@@ -420,7 +420,7 @@ char* RCSwitch::getCodeWordC(char sFamily, int nGroup, int nDevice, bool bStatus
  *
  * @return char[13], representing a tristate code word of length 12
  */
-char* RCSwitch::getCodeWordD(char* sGroup, int nDevice, bool bStatus) {
+char* RCSwitch::getCodeWordD(const char* sGroup, int nDevice, bool bStatus) {
   static char sReturn[13];
   int nReturnPos = 0;
 
@@ -466,7 +466,7 @@ char* RCSwitch::getCodeWordD(char* sGroup, int nDevice, bool bStatus) {
  *
  * @return char[13], representing a tristate code word of length 12
  */
-char* RCSwitch::getCodeWordZ(char sGroup, int nDevice, bool bStatus) {
+char* RCSwitch::getCodeWordZ(char* sGroup, int nDevice, bool bStatus) {
   static char sReturn[13];
   int nReturnPos = 0;
 
