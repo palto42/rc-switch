@@ -307,7 +307,7 @@ void RCSwitch::switchOff(const char* sGroup, const char* sDevice) {
  * @param nChannelCode  Number of the switch itself (1..5)
  */
 void RCSwitch::switchOnZap(const char* sGroup, int nChannel) {
-  this->sendTriState( this->getCodeWordZ(sGroup, nDevice, false) );
+  this->sendTriState( this->getCodeWordZ(sGroup, nChannel, true) );
 }
 
 /**
@@ -485,7 +485,7 @@ char* RCSwitch::getCodeWordD(const char sGroup, int nDevice, bool bStatus) {
  *
  * @return char[13], representing a tristate code word of length 12
  */
-char* RCSwitch::getCodeWordZ(char* sGroup, int nDevice, bool bStatus) {
+char* RCSwitch::getCodeWordZ(const char* sGroup, int nDevice, bool bStatus) {
   static char sReturn[13];
   int nReturnPos = 0;
 
