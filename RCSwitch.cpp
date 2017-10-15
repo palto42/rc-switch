@@ -1,4 +1,17 @@
 /*
+ * RCSwitch library for Raspberry Pi, Arduino amd ESP8266
+ * Cloned from https://github.com/sui77/rc-switch/
+ * 
+ * Update by Matthias Homann
+ *   - Added new protocol #7 for Zap switches 
+ * 
+ * Temp notes:
+ *  * Zap coding is similar to getCodeWordA, but the device code is a bit different
+ *     * The lower to bits for device 1 and 2 use a tri-state "0" instead of an "F"
+ *  * Zap code is like REV, but with different split between System and Device code
+ *     * System address is the first 5 tri-state digits "FFFFF" with one or more digits as "0" (solder bride)
+ *     * Device code is the next 5 tri-stated digits "FFF00" with the switch ID as tri-state "1" (switch #1 at lowest digit = "FFF01")
+ * 
   RCSwitch - Arduino libary for remote control outlet switches
   Copyright (c) 2011 Suat Özgür.  All right reserved.
   
@@ -73,12 +86,13 @@ static const RCSwitch::Protocol proto[] = {
 #else
 static const RCSwitch::Protocol PROGMEM proto[] = {
 #endif
-  { 350, {  1, 31 }, {  1,  3 }, {  3,  1 }, false },    // protocol 1
+  { 350, {  1, 31 }, {  1,  3 }, {  3,  1 }, false },    // protocol 1 (default, Comag)
   { 650, {  1, 10 }, {  1,  2 }, {  2,  1 }, false },    // protocol 2
   { 100, { 30, 71 }, {  4, 11 }, {  9,  6 }, false },    // protocol 3
   { 380, {  1,  6 }, {  1,  3 }, {  3,  1 }, false },    // protocol 4
   { 500, {  6, 14 }, {  1,  2 }, {  2,  1 }, false },    // protocol 5
-  { 450, { 23,  1 }, {  1,  2 }, {  2,  1 }, true }      // protocol 6 (HT6P20B)
+  { 450, { 23,  1 }, {  1,  2 }, {  2,  1 }, true },     // protocol 6 (HT6P20B)
+  { 188, {  1, 31 }, {  1,  3 }, {  3,  1 }, false }     // protocol 7 (Zap)
 };
 
 enum {
@@ -406,7 +420,7 @@ char* RCSwitch::getCodeWordC(char sFamily, int nGroup, int nDevice, bool bStatus
  *
  * @return char[13], representing a tristate code word of length 12
  */
-char* RCSwitch::getCodeWordD(char sGroup, int nDevice, bool bStatus) {
+char* RCSwitch::getCodeWordD(char* sGroup, int nDevice, bool bStatus) {
   static char sReturn[13];
   int nReturnPos = 0;
 
@@ -430,6 +444,45 @@ char* RCSwitch::getCodeWordD(char sGroup, int nDevice, bool bStatus) {
 
   sReturn[nReturnPos++] = bStatus ? '1' : '0';
   sReturn[nReturnPos++] = bStatus ? '0' : '1';
+
+  sReturn[nReturnPos] = '\0';
+  return sReturn;
+}
+
+/**
+ * Encoding for the Zap Switch Type
+ *
+ * The code word is a tristate word and with following bit pattern:
+ *
+ * +-------------------------+-------------------------+--------------+
+ * | 5 bits system address   | 5 bits address device   | 2 bits       |
+ * | base address "FFFFF"    | base code "FFF00"       | on / off     |
+ * | solder bridge = "0"     | device digit = "0"      | on=10 off=01 |
+ * +-------------------------+-------------------------+--------------+
+ *
+ * @param sGroup        Solder bridge patter with "0" for solder bridge and "1" for open 
+ * @param nDevice       Number of the switch itself (1..5)
+ * @param bStatus       Whether to switch on (true) or off (false)
+ *
+ * @return char[13], representing a tristate code word of length 12
+ */
+char* RCSwitch::getCodeWordZ(char sGroup, int nDevice, bool bStatus) {
+  static char sReturn[13];
+  int nReturnPos = 0;
+
+  for (int i = 0; i < 5; i++) {
+    sReturn[nReturnPos++] = (sGroup[i] == '0') ? '0' : 'F';
+  }
+
+  for (int i = 0; i < 3; i++) {
+    sReturn[nReturnPos++] = (nDevice == 5-i) ? '1' : 'F';
+  }
+
+  for (int i = 0; i < 3; i++) {
+    sReturn[nReturnPos++] = (nDevice == 2-i) ? '1' : '0';
+  }
+  sReturn[nReturnPos++] = bStatus ? '0' : '1';
+  sReturn[nReturnPos++] = bStatus ? '1' : '0';
 
   sReturn[nReturnPos] = '\0';
   return sReturn;

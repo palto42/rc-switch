@@ -1,4 +1,10 @@
 /*
+ * RCSwitch library for Raspberry Pi, Arduino amd ESP8266
+ * Cloned from https://github.com/sui77/rc-switch/
+ * 
+ * Update by Matthias Homann
+ *   - Added new protocol #7 for Zap switches 
+ * 
   RCSwitch - Arduino libary for remote control outlet switches
   Copyright (c) 2011 Suat Özgür.  All right reserved.
 
@@ -153,6 +159,7 @@ class RCSwitch {
     char* getCodeWordB(int nGroupNumber, int nSwitchNumber, bool bStatus);
     char* getCodeWordC(char sFamily, int nGroup, int nDevice, bool bStatus);
     char* getCodeWordD(char group, int nDevice, bool bStatus);
+    char* RCSwitch::getCodeWordZ(char sGroup, int nDevice, bool bStatus);
     void transmit(HighLow pulses);
 
     #if not defined( RCSwitchDisableReceiving )
