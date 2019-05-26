@@ -1,20 +1,20 @@
 /*
  * RCSwitch library for Raspberry Pi, Arduino amd ESP8266
  * Cloned from https://github.com/sui77/rc-switch/
- * 
+ *
  * Update by Matthias Homann
- *   - Added new protocol #7 for Zap switches 
- * 
+ *   - Added new protocol #7 for Zap switches
+ *
  * Temp notes:
  *  * Zap coding is similar to getCodeWordA, but the device code is a bit different
  *     * The lower to bits for device 1 and 2 use a tri-state "0" instead of an "F"
  *  * Zap code is like REV, but with different split between System and Device code
  *     * System address is the first 5 tri-state digits "FFFFF" with one or more digits as "0" (solder bride)
  *     * Device code is the next 5 tri-stated digits "FFF00" with the switch ID as tri-state "1" (switch #1 at lowest digit = "FFF01")
- * 
+ *
   RCSwitch - Arduino libary for remote control outlet switches
   Copyright (c) 2011 Suat Özgür.  All right reserved.
-  
+
   Contributors:
   - Andre Koehler / info(at)tomate-online(dot)de
   - Gordeev Andrey Vladimirovich / gordeev(at)openpyro(dot)com
@@ -26,7 +26,7 @@
   - Robert ter Vehn / <first name>.<last name>(at)gmail(dot)com
   - Johann Richard / <first name>.<last name>(at)gmail(dot)com
   - Vlad Gheorghe / <first name>.<last name>(at)gmail(dot)com https://github.com/vgheo
-  
+
   Project home: https://github.com/sui77/rc-switch/
 
   This library is free software; you can redistribute it and/or
@@ -53,7 +53,7 @@
     #define memcpy_P(dest, src, num) memcpy((dest), (src), (num))
 #endif
 
-#ifdef ESP8266
+#if defined(ESP8266) || defined(ESP32)
     // interrupt handler and related code must be in RAM on ESP8266,
     // according to issue #46.
     #define RECEIVE_ATTR ICACHE_RAM_ATTR
@@ -64,7 +64,7 @@
 
 /* Format for protocol definitions:
  * {pulselength, Sync bit, "0" bit, "1" bit}
- * 
+ *
  * pulselength: pulse length in microseconds, e.g. 350
  * Sync bit: {1, 31} means 1 high pulse and 31 low pulses
  *     (perceived as a 31*pulselength long pulse, total length of sync bit is
@@ -81,7 +81,7 @@
  *
  * These are combined to form Tri-State bits when sending or receiving codes.
  */
-#ifdef ESP8266
+#if defined(ESP8266) || defined(ESP32)
 static const RCSwitch::Protocol proto[] = {
 #else
 static const RCSwitch::Protocol PROGMEM proto[] = {
@@ -92,7 +92,8 @@ static const RCSwitch::Protocol PROGMEM proto[] = {
   { 380, {  1,  6 }, {  1,  3 }, {  3,  1 }, false },    // protocol 4
   { 500, {  6, 14 }, {  1,  2 }, {  2,  1 }, false },    // protocol 5
   { 450, { 23,  1 }, {  1,  2 }, {  2,  1 }, true },     // protocol 6 (HT6P20B)
-  { 188, {  1, 31 }, {  1,  3 }, {  3,  1 }, false }     // protocol 7 (Zap)
+  { 150, {  2, 62 }, {  1,  6 }, {  6,  1 }, false }     // protocol 7 (HS2303-PT, i. e. used in AUKEY Remote)
+  { 188, {  1, 31 }, {  1,  3 }, {  3,  1 }, false }     // protocol 8 (Zap)
 };
 
 enum {
@@ -137,7 +138,7 @@ void RCSwitch::setProtocol(int nProtocol) {
   if (nProtocol < 1 || nProtocol > numProto) {
     nProtocol = 1;  // TODO: trigger an error, e.g. "bad protocol" ???
   }
-#ifdef ESP8266
+#if defined(ESP8266) || defined(ESP32)
   this->protocol = proto[nProtocol-1];
 #else
   memcpy_P(&this->protocol, &proto[nProtocol-1], sizeof(Protocol));
@@ -175,7 +176,7 @@ void RCSwitch::setReceiveTolerance(int nPercent) {
   RCSwitch::nReceiveTolerance = nPercent;
 }
 #endif
-  
+
 
 /**
  * Enable transmissions
@@ -397,7 +398,7 @@ char* RCSwitch::getCodeWordC(char sFamily, int nGroup, int nDevice, bool bStatus
   if ( nFamily < 0 || nFamily > 15 || nGroup < 1 || nGroup > 4 || nDevice < 1 || nDevice > 4) {
     return 0;
   }
-  
+
   // encode the family into four bits
   sReturn[nReturnPos++] = (nFamily & 1) ? 'F' : '0';
   sReturn[nReturnPos++] = (nFamily & 2) ? 'F' : '0';
@@ -433,7 +434,7 @@ char* RCSwitch::getCodeWordC(char sFamily, int nGroup, int nDevice, bool bStatus
  *
  * Source: http://www.the-intruder.net/funksteckdosen-von-rev-uber-arduino-ansteuern/
  *
- * @param sGroup        Name of the switch group (A..D, resp. a..d) 
+ * @param sGroup        Name of the switch group (A..D, resp. a..d)
  * @param nDevice       Number of the switch itself (1..3)
  * @param bStatus       Whether to switch on (true) or off (false)
  *
@@ -479,7 +480,7 @@ char* RCSwitch::getCodeWordD(const char sGroup, int nDevice, bool bStatus) {
  * | solder bridge = "0"     | device digit = "0"      | on=10 off=01 |
  * +-------------------------+-------------------------+--------------+
  *
- * @param sGroup        Solder bridge patter with "0" for solder bridge and "1" for open 
+ * @param sGroup        Solder bridge patter with "0" for solder bridge and "1" for open
  * @param nDevice       Number of the switch itself (1..5)
  * @param bStatus       Whether to switch on (true) or off (false)
  *
@@ -577,6 +578,9 @@ void RCSwitch::send(unsigned long code, unsigned int length) {
     this->transmit(protocol.syncFactor);
   }
 
+  // Disable transmit after sending (i.e., for inverted protocols)
+  digitalWrite(this->nTransmitterPin, LOW);
+
 #if not defined( RCSwitchDisableReceiving )
   // enable receiver again if we just disabled it
   if (nReceiverInterrupt_backup != -1) {
@@ -591,7 +595,7 @@ void RCSwitch::send(unsigned long code, unsigned int length) {
 void RCSwitch::transmit(HighLow pulses) {
   uint8_t firstLogicLevel = (this->protocol.invertedSignal) ? LOW : HIGH;
   uint8_t secondLogicLevel = (this->protocol.invertedSignal) ? HIGH : LOW;
-  
+
   digitalWrite(this->nTransmitterPin, firstLogicLevel);
   delayMicroseconds( this->protocol.pulseLength * pulses.high);
   digitalWrite(this->nTransmitterPin, secondLogicLevel);
@@ -667,7 +671,7 @@ static inline unsigned int diff(int A, int B) {
  *
  */
 bool RECEIVE_ATTR RCSwitch::receiveProtocol(const int p, unsigned int changeCount) {
-#ifdef ESP8266
+#if defined(ESP8266) || defined(ESP32)
     const Protocol &pro = proto[p-1];
 #else
     Protocol pro;
@@ -679,7 +683,7 @@ bool RECEIVE_ATTR RCSwitch::receiveProtocol(const int p, unsigned int changeCoun
     const unsigned int syncLengthInPulses =  ((pro.syncFactor.low) > (pro.syncFactor.high)) ? (pro.syncFactor.low) : (pro.syncFactor.high);
     const unsigned int delay = RCSwitch::timings[0] / syncLengthInPulses;
     const unsigned int delayTolerance = delay * RCSwitch::nReceiveTolerance / 100;
-    
+
     /* For protocols that start low, the sync period looks like
      *               _________
      * _____________|         |XXXXXXXXXXXX|
@@ -756,7 +760,7 @@ void RECEIVE_ATTR RCSwitch::handleInterrupt() {
     }
     changeCount = 0;
   }
- 
+
   // detect overflow
   if (changeCount >= RCSWITCH_MAX_CHANGES) {
     changeCount = 0;
@@ -764,6 +768,6 @@ void RECEIVE_ATTR RCSwitch::handleInterrupt() {
   }
 
   RCSwitch::timings[changeCount++] = duration;
-  lastTime = time;  
+  lastTime = time;
 }
 #endif
